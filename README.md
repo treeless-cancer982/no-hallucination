@@ -27,7 +27,38 @@ AI agents hallucinate their own history. They orient from degraded conversation 
 
 The continuity file is the handshake. When `/ship` writes accurately, `/orient` starts accurately, and the next session inherits truth instead of hallucination.
 
+### What it looks like in practice
+
+```
+Agent edits auth.js, then says:
+  "Fixed the authentication bug — verified all tests pass."
+
+proof-guard fires:
+  BLOCKED: You claimed something was fixed, but no verification ran
+  before the edit. Show the broken state first, then the fix, then
+  verify it works.
+
+Agent runs: npm test (fails) → edits auth.js → npm test (passes)
+Agent says:
+  "Fixed the authentication bug. Tests failed before (3 failures),
+   pass after (24/24). Diff: auth.js line 42."
+
+proof-guard: ✓ (before + after evidence in ledger)
+```
+
 ## Install
+
+### Quick install (recommended)
+
+```bash
+git clone https://github.com/AlethiaQuizForge/claude-masterplan.git
+cd your-project
+/path/to/claude-masterplan/install.sh
+```
+
+The install script copies skills, hooks, and creates the ledger directory. If you already have a `settings.json`, it won't overwrite — you'll merge the hook wiring manually. See [Configuration](#configuration) for details.
+
+### Manual install
 
 ```bash
 git clone https://github.com/AlethiaQuizForge/claude-masterplan.git
@@ -130,7 +161,7 @@ Git: committed and pushed (abc1234)
 
 ## The Guards
 
-Seven hooks using the **tracker-ledger-guard** pattern:
+Seven hooks (3 guards + 3 trackers + 1 gate) using the **tracker-ledger-guard** pattern:
 
 1. **Trackers** watch what the agent actually does — which commands it runs, which files it searches, when it edits files. They write entries to ledger files.
 2. **Guards** read the agent's final response and check its claims against the ledger. If the claims don't match the evidence, the response is blocked.

@@ -2,33 +2,6 @@
 
 **Stop your AI from hallucinating its own history.**
 
-A session discipline kit for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that keeps agents honest — at session start, during work, and at session close. Three tools, one loop.
-
-## The Problem
-
-AI agents hallucinate their own history. They orient from degraded conversation summaries, make confident claims about work they didn't verify, and write session summaries from memory instead of evidence. Across sessions, these small lies compound — Session N's hallucination becomes Session N+1's false premise.
-
-> Models are faithful to their chain of thought only 25-41% of the time.
-> — [arxiv 2507.11473](https://arxiv.org/abs/2507.11473)
-
-## The Loop
-
-```
-/orient (start) ──→ guard hooks (during) ──→ /ship (close)
-      ↑                                           │
-      └──────────── last-session.md ←──────────────┘
-```
-
-1. **`/orient`** — Structured session start. Reads the continuity file from the last `/ship`, collects live state (git, goals, reminders), presents a structured report. Evidence-based orientation, not conversation recall.
-
-2. **Guard hooks** — Epistemic enforcement during work. Seven hooks that watch what the agent actually does and block claims that don't match the evidence.
-
-3. **`/ship`** — Session close. Writes a continuity file from `git log` and command outputs — never from conversation memory. What it writes is what `/orient` reads next session.
-
-The continuity file is the handshake. When `/ship` writes accurately, `/orient` starts accurately, and the next session inherits truth instead of hallucination.
-
-### What it looks like in practice
-
 ```
 Agent edits auth.js, then says:
   "Fixed the authentication bug — verified all tests pass."
@@ -46,6 +19,37 @@ Agent says:
 proof-guard: ✓ (before + after evidence in ledger)
 ```
 
+When a guard fires, Claude Code shows the block reason and the agent gets a second chance to produce evidence before continuing. No session stall — just enforced honesty.
+
+## The Problem
+
+AI agents hallucinate their own history. They orient from degraded conversation summaries, make confident claims about work they didn't verify, and write session summaries from memory instead of evidence. Across sessions, these small lies compound — Session N's hallucination becomes Session N+1's false premise.
+
+> Models are faithful to their chain of thought only 25-41% of the time.
+> — [Chain of Thought Monitorability (arxiv 2507.11473)](https://arxiv.org/abs/2507.11473)
+
+## The Loop
+
+```
+/orient (start) ──→ guard hooks (during) ──→ /ship (close)
+      ↑                                           │
+      └──────────── last-session.md ←──────────────┘
+```
+
+1. **`/orient`** — Structured session start. Reads the continuity file from the last `/ship`, collects live state (git, goals, reminders), presents a structured report. Evidence-based orientation, not conversation recall.
+
+2. **Guard hooks** — Epistemic enforcement during work. Seven hooks that watch what the agent actually does and block claims that don't match the evidence.
+
+3. **`/ship`** — Session close. Writes a continuity file from `git log` and command outputs — never from conversation memory. What it writes is what `/orient` reads next session.
+
+The continuity file is the handshake. When `/ship` writes accurately, `/orient` starts accurately, and the next session inherits truth instead of hallucination.
+
+## Requirements
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (any version with hooks and skills support)
+- bash, jq (standard on macOS and Linux)
+- git (for orient/ship state collection)
+
 ## Install
 
 ### Quick install (recommended)
@@ -56,46 +60,26 @@ cd your-project
 /path/to/claude-masterplan/install.sh
 ```
 
-The install script copies skills, hooks, and creates the ledger directory. If you already have a `settings.json`, it won't overwrite — you'll merge the hook wiring manually. See [Configuration](#configuration) for details.
+The install script copies skills, hooks, and creates the ledger directory. If you already have a `settings.json`, it won't overwrite — you'll merge the hook wiring manually (see [Configuration](#configuration)).
 
 ### Manual install
 
 ```bash
 git clone https://github.com/AlethiaQuizForge/claude-masterplan.git
-cd claude-masterplan
 ```
 
-### Full loop (recommended)
-
+**Full loop** (recommended):
 ```bash
-# Copy skills
-mkdir -p .claude/skills
+mkdir -p .claude/skills .claude/hooks
 cp -r skills/orient skills/ship .claude/skills/
-
-# Copy hooks
-mkdir -p .claude/hooks
 cp hooks/*.sh .claude/hooks/
 chmod +x .claude/hooks/*.sh
-
 # Merge settings.json into your .claude/settings.json
-# (see settings.json for the exact hook wiring)
 ```
 
-### Just the guards
+**Just the guards:** Copy only `hooks/` and `settings.json`.
 
-```bash
-mkdir -p .claude/hooks
-cp hooks/*.sh .claude/hooks/
-chmod +x .claude/hooks/*.sh
-# Merge settings.json
-```
-
-### Just the lifecycle (orient + ship)
-
-```bash
-mkdir -p .claude/skills
-cp -r skills/orient skills/ship .claude/skills/
-```
+**Just the lifecycle:** Copy only `skills/orient` and `skills/ship`.
 
 ## The Skills
 
@@ -128,9 +112,18 @@ ALERTS:
 === Orient complete. ===
 ```
 
-**Configurable:** Set paths for your continuity file, goals file, reminders file, and grounding files in `skills/orient/SKILL.md`.
+### Customizing orient
 
-**Extensible:** Add custom state collectors (dependency checks, test status, Docker health — whatever matters for your project).
+Set paths at the top of `skills/orient/SKILL.md`:
+
+```
+CONTINUITY_FILE=".claude/last-session.md"   # Written by /ship
+GOALS_FILE=""                                # e.g., "goals.md", "TODO.md"
+REMINDERS_FILE=""                            # e.g., ".claude/reminders.md"
+GROUNDING_FILES=""                           # Files to read silently at session start
+```
+
+Add custom state collectors in Step 5 — dependency checks, test status, Docker health, whatever matters for your project.
 
 ### /ship — Session Close
 
@@ -153,6 +146,16 @@ Git: committed and pushed (abc1234)
 === Ship complete. ===
 ```
 
+### Customizing ship
+
+Set paths at the top of `skills/ship/SKILL.md`:
+
+```
+CONTINUITY_FILE=".claude/last-session.md"
+GOALS_FILE=""                                # Optional goals tracking
+PUSH_AFTER_COMMIT=true                       # false to commit without pushing
+```
+
 **Key rules:**
 - Every claim in the session summary comes from a command output (`git log`, `git status`)
 - Files staged by name — never `git add -A`
@@ -166,7 +169,7 @@ Seven hooks (3 guards + 3 trackers + 1 gate) using the **tracker-ledger-guard** 
 1. **Trackers** watch what the agent actually does — which commands it runs, which files it searches, when it edits files. They write entries to ledger files.
 2. **Guards** read the agent's final response and check its claims against the ledger. If the claims don't match the evidence, the response is blocked.
 
-### Guards (Stop hooks)
+### Guards (Stop hooks — check claims against evidence)
 
 | Hook | What it catches |
 |------|----------------|
@@ -174,7 +177,7 @@ Seven hooks (3 guards + 3 trackers + 1 gate) using the **tracker-ledger-guard** 
 | **proof-guard** | "Fixed the bug" — without before/after evidence |
 | **claim-guard** | "Doesn't exist" — without searching first |
 
-### Trackers (PostToolUse hooks)
+### Trackers (PostToolUse hooks — build the evidence ledger)
 
 | Hook | What it records |
 |------|----------------|
@@ -182,46 +185,61 @@ Seven hooks (3 guards + 3 trackers + 1 gate) using the **tracker-ledger-guard** 
 | **search-tracker** | Search commands (grep, glob, find) |
 | **edit-timestamp** | When the first file edit happened |
 
-### Gate (PreToolUse hook)
+### Gate (PreToolUse hook — require investigation before action)
 
 | Hook | What it enforces |
 |------|-----------------|
 | **build-gate** | Investigation before editing infrastructure files |
 
-```
-Agent runs: npm test              →  verify-tracker logs it
-Agent says: "All tests pass"      →  verify-guard checks ledger ✓
+### How the guards layer
 
-Agent says: "Verified — all green" → verify-guard checks ledger ✗ (empty!)
-                                   → BLOCKED: "Run the actual verification command"
 ```
+Stop hook fires
+  │
+  ├─ verify-guard: "Did you run ANY verification command?"
+  │   └─ No → BLOCK (run the check first)
+  │   └─ Yes → pass to next guard
+  │
+  ├─ proof-guard: "Did you run checks BEFORE and AFTER the edit?"
+  │   └─ No before → BLOCK (show the broken state first)
+  │   └─ No after  → BLOCK (verify the fix)
+  │   └─ Both      → pass to next guard
+  │
+  └─ claim-guard: "Did you SEARCH before saying it doesn't exist?"
+      └─ No searches → BLOCK (look before you speak)
+      └─ Searched    → allow
+```
+
+### Hook configuration
+
+Set `GUARD_HOOKS_DIR` to change where ledger files are stored (default: `.claude/guard-hooks/`). Set `GUARD_HOOKS_SEARCH_SCOPES` for multi-directory search enforcement. Each guard has a `TRIGGERS` variable near the top of the script — add or remove phrases to match your workflow.
 
 ## Real-World Example
 
-This kit was extracted from a production system where two AI agents coordinate across sessions — a knowledge scribe and a messenger, maintaining a domain knowledge base. The skills are extended with domain-specific state collectors:
+This kit was extracted from a production system where two AI agents coordinate across sessions — a knowledge scribe and a messenger. The orient and ship skills are extended with domain-specific state collectors (inter-agent bridge, dependency checker, knowledge graph metrics, processing pipeline verification).
 
 <details>
-<summary>Production orient output (extended)</summary>
+<summary>Production orient output (multi-agent, extended)</summary>
 
 ```
 === ORIENT — 2026-03-23 ===
 
 CONTINUITY:
-  Processed 12 clinical insights from DSM-5 pocket guide.
+  Processed 12 source documents into knowledge graph.
   Pipeline verification: all batches PASS. Graph fully connected.
 
 UNRESOLVED (carried forward):
-  - 3 insights need cross-domain connections
+  - 3 items need cross-domain connections
   - Dependency: ws 8.19.0 → 8.20.0 (MINOR, awaiting approval)
 
 BRIDGE (unread):
-  Hermes: "Signal trust fixed for two practitioners. Briefings will flow."
+  Agent-2: "Config fix deployed. Service restored."
 
 REMINDERS:
-  - DUE 2026-03-24: Verify assessment prep changed clinical behavior
+  - DUE 2026-03-24: Verify prep materials changed workflow behavior
 
 KNOWLEDGE GRAPH:
-  Insights: 1535 | Intake: 0 | Queue: 0 pending
+  Nodes: 1535 | Intake: 0 | Queue: 0 pending
   Observations: 11 | Horizon unreviewed: 0
 
 DEPENDENCIES:
@@ -230,8 +248,7 @@ DEPENDENCIES:
   - eslint: 9.39.4 → 10.1.0 (MAJOR)
 
 ACTIVE THREADS:
-  - Multi-Agent Phase 3 — Accountant Calibration
-  - Continuity — PreCompact + PostCompact hooks shipped
+  - Multi-Agent Phase 3 — trust calibration
   - Agent Infrastructure Health — 4 checks planned
 
 ALERTS:
@@ -243,20 +260,20 @@ ALERTS:
 </details>
 
 <details>
-<summary>Production ship output (extended)</summary>
+<summary>Production ship output (multi-agent, extended)</summary>
 
 ```
 === SESSION CLOSE ===
 
 Commits: 8 this session
-KB: 1535 nodes
+Knowledge nodes: 1535
 Queue: 0 pending
 Observations: 11
 
 Goals updated:
-  - Open-Source Products: updated (ship skill released)
+  - Open-source release: updated (v1.0.0 shipped)
   - Dep checker fix: closed
-  - Agent Infrastructure Health: unchanged
+  - Infrastructure health: unchanged
 
 Pipeline verification:
   No pipeline work this session.
@@ -273,34 +290,7 @@ Bridge: posted
 
 </details>
 
-See the [`examples/real-world/`](examples/real-world/) directory for the full extended examples with commentary on how each customization point was used.
-
-## Configuration
-
-Both skills have a **Configuration** section at the top of their `SKILL.md` with paths you can customize:
-
-**Orient:**
-```
-CONTINUITY_FILE=".claude/last-session.md"
-GOALS_FILE=""
-REMINDERS_FILE=""
-GROUNDING_FILES=""
-```
-
-**Ship:**
-```
-CONTINUITY_FILE=".claude/last-session.md"
-GOALS_FILE=""
-PUSH_AFTER_COMMIT=true
-```
-
-**Hooks:** Set `GUARD_HOOKS_DIR` to change ledger location. Set `GUARD_HOOKS_SEARCH_SCOPES` for multi-directory search enforcement. See [hook configuration](hooks/) for details.
-
-## Requirements
-
-- Claude Code (any version with hooks and skills support)
-- bash, jq (standard on macOS and Linux)
-- git (for orient/ship state collection)
+See [`examples/real-world/`](examples/real-world/) for the full extended examples with commentary.
 
 ## Origin
 

@@ -11,3 +11,7 @@
 ## Unresolved
 - Integration tests for rate limiter not written yet
 - docs/api.md needs rate limit headers documented
+
+## Context for next session
+- Chose sliding window over fixed window — see commit notes for rationale
+- Rate limiter middleware is in src/middleware/rate-limit.js, not in the router

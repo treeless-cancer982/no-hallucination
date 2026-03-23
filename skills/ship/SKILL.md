@@ -21,6 +21,7 @@ Adjust these paths to match your project. Everything else is automatic.
 CONTINUITY_FILE=".claude/last-session.md"   # Where to write session summary
 GOALS_FILE=""                                # Set to your goals file path (e.g., "goals.md") or leave empty to skip
 PUSH_AFTER_COMMIT=true                       # Set to false to commit without pushing
+COMMIT_PREFIX="Session close:"               # Prefix for ship commits (also used for idempotency check)
 ```
 
 ---
@@ -31,7 +32,7 @@ PUSH_AFTER_COMMIT=true                       # Set to false to commit without pu
 git log --oneline -1
 ```
 
-If the last commit message starts with "Session close:", this session already shipped. **ABORT** — say "Already shipped" and stop. Do not double-ship.
+If the last commit message starts with COMMIT_PREFIX (default: "Session close:"), this session already shipped. **ABORT** — say "Already shipped" and stop. Do not double-ship.
 
 ---
 
@@ -93,10 +94,15 @@ Write the continuity file using this template. Fill values ONLY from command out
 - [from GIT STATUS: uncommitted/untracked work]
 - [from goals: active threads not closed]
 - [if none: "None."]
+
+## Context for next session
+- [what the next session should know that isn't obvious from the git log]
+- [design decisions, rejected approaches, intent behind the work]
+- [if none: omit this section]
 ```
 
 **Constraints:**
-- Max 15 lines in the body
+- Max 25 lines in the body
 - Every number and fact must come from a Step 1 output
 - If you don't have data for a field, write "unknown" — never guess
 
@@ -104,7 +110,7 @@ After writing, verify length:
 ```bash
 wc -l [CONTINUITY_FILE]
 ```
-If over 25 lines total (including headers), trim the "What happened" section.
+If over 35 lines total (including headers), trim the "What happened" section.
 
 ---
 
@@ -123,7 +129,7 @@ git status --short
 Review staged changes. Then commit:
 
 ```bash
-git commit -m "Session close: [one-line summary from git log themes]"
+git commit -m "COMMIT_PREFIX [one-line summary from git log themes]"
 ```
 
 If PUSH_AFTER_COMMIT is true:

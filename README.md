@@ -32,9 +32,9 @@ AI agents hallucinate their own history. They make confident claims about work t
 
 ## What's In The Box
 
-### 9 hooks that catch your AI lying
+### 11 hooks that catch your AI lying
 
-Seven guard hooks using the **tracker-ledger-guard** pattern, plus two compaction hooks that protect context across long sessions.
+Nine guard and tracker hooks using the **tracker-ledger-guard** pattern, plus two compaction hooks that protect context across long sessions.
 
 **Trackers** watch what the agent does and write evidence to ledger files. **Guards** check the agent's claims against that evidence. If the claims don't match, the response is blocked.
 
@@ -47,6 +47,8 @@ Seven guard hooks using the **tracker-ledger-guard** pattern, plus two compactio
 | **search-tracker** | Tracker | Logs search commands (grep, glob, find) |
 | **edit-timestamp** | Tracker | Records when the first file edit happened |
 | **build-gate** | Gate | Requires investigation before editing infrastructure files |
+| **deliverable-guard** | Guard | Catches untracked files written outside the project |
+| **track-deliverable** | Tracker | Logs external file writes for deliverable-guard |
 | **pre-compact** | Compaction | Forces state persistence before context compression |
 | **post-compact** | Compaction | Re-injects critical context after compression |
 
@@ -63,19 +65,25 @@ Stop hook fires
   │   └─ Both      → pass
   │
   └─ claim-guard: "Did you SEARCH before saying it doesn't exist?"
-      └─ No → BLOCK (look before you speak)
-      └─ Yes → allow
+  │   └─ No → BLOCK (look before you speak)
+  │   └─ Yes → allow
+  │
+  └─ deliverable-guard: "Did you TRACK files written outside the project?"
+      └─ Untracked files → BLOCK (check if they need reminders/tasks)
+      └─ All tracked or dismissed → allow
 ```
 
-### 2 skills that close the loop
+### 3 skills that close the loop
 
 ```
-/orient (start) ──→ guard hooks (during) ──→ /ship (close)
-      ↑                                           │
-      └──────────── last-session.md ←──────────────┘
+/orient (start) ──→ /build (before infra changes) ──→ guard hooks (during) ──→ /ship (close)
+      ↑                                                                              │
+      └────────────────────────── last-session.md ←──────────────────────────────────┘
 ```
 
 **`/orient`** — Structured session start. Reads the continuity file from the last `/ship`, collects live state (git, goals, reminders), presents a structured report. Evidence-based orientation, not conversation recall.
+
+**`/build`** — Pre-build investigation gate. Before modifying infrastructure (hooks, scripts, skills), forces a 4-phase discipline: investigate → diagnose → audit → propose. Only builds after explicit approval. Prevents the pattern where "just a quick fix" leads to hours of wrong-direction building.
 
 **`/ship`** — Session close. Writes a continuity file from `git log` and command outputs — never from conversation memory. Every claim traceable to a command. What it writes is what `/orient` reads next session.
 
@@ -124,6 +132,32 @@ Git: committed and pushed (abc1234)
 
 === Ship complete. ===
 ```
+
+### Hook health audit
+
+As your hook collection grows, hooks can go stale (registered in settings but script deleted) or dormant (never firing). Run the health check to audit:
+
+```bash
+bash scripts/hook-health.sh
+```
+
+```
+=== HOOK HEALTH — 2026-03-30 ===
+
+  ACTIVE   (9)
+    verify-guard.sh              Stop                     evidence: LEDGER
+    proof-guard.sh               Stop                     evidence: LEDGER
+    build-gate.sh                PreToolUse:Write|Edit    evidence: FLAG
+    ...
+
+  ASSUMED  (2)
+    pre-compact.sh               PreCompact               rare event — structural OK
+    post-compact.sh              PostCompact              rare event — structural OK
+
+=== 11 hooks checked ===
+```
+
+Pass `--project-only` to skip global `~/.claude/settings.json`.
 
 ## Requirements
 

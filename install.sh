@@ -45,17 +45,24 @@ else
 fi
 
 # Skills
-mkdir -p .claude/skills/orient .claude/skills/ship
+mkdir -p .claude/skills/orient .claude/skills/ship .claude/skills/build
 cp "$ORIENT_SRC/SKILL.md" .claude/skills/orient/
 cp "$SCRIPT_DIR/skills/ship/SKILL.md" .claude/skills/ship/
-echo "  Copied skills: orient, ship"
+cp "$SCRIPT_DIR/skills/build/SKILL.md" .claude/skills/build/
+echo "  Copied skills: orient, ship, build"
 
 # Hooks
 mkdir -p .claude/hooks
 cp "$SCRIPT_DIR/hooks/"*.sh .claude/hooks/
 chmod +x .claude/hooks/*.sh
 HOOK_COUNT=$(ls "$SCRIPT_DIR/hooks/"*.sh | wc -l | tr -d ' ')
-echo "  Copied hooks: $HOOK_COUNT files (7 guards + 2 compaction)"
+echo "  Copied hooks: $HOOK_COUNT files (9 guards/trackers + 2 compaction)"
+
+# Scripts
+mkdir -p scripts
+cp "$SCRIPT_DIR/scripts/"*.sh scripts/ 2>/dev/null
+chmod +x scripts/*.sh 2>/dev/null
+echo "  Copied scripts: hook-health.sh"
 
 # Ledger directory
 mkdir -p .claude/guard-hooks

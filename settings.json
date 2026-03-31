@@ -7,6 +7,11 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/edit-timestamp.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/track-deliverable.sh",
+            "async": true
           }
         ]
       },
@@ -61,6 +66,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/claim-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/deliverable-guard.sh"
           }
         ]
       }

